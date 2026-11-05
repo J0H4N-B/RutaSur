@@ -1,0 +1,4 @@
+Flask>=3.1
+Flask-SQLAlchemy>=3.1
+folium>=0.20
+python-dotenv>=1.0

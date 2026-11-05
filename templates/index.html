@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+{% block titulo %}Panel{% endblock %}
+
+{% block contenido %}
+<div class="row g-3 mb-4" id="kpis">
+  <div class="col-6 col-lg-3">
+    <div class="card h-100"><div class="card-body d-flex align-items-center gap-3">
+      <i class="bx bx-store fs-1 text-primary"></i>
+      <div><div class="text-muted small">Clientes</div><div class="fs-4 fw-semibold">{{ clientes|length }}</div></div>
+    </div></div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card h-100"><div class="card-body d-flex align-items-center gap-3">
+      <i class="bx bx-line-chart fs-1 text-success"></i>
+      <div><div class="text-muted small">Ventas</div><div class="fs-4 fw-semibold">{{ ventas|cop }}</div></div>
+    </div></div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card h-100"><div class="card-body d-flex align-items-center gap-3">
+      <i class="bx bx-undo fs-1 text-danger"></i>
+      <div><div class="text-muted small">Devoluciones</div><div class="fs-4 fw-semibold">{{ total_devuelto|cop }}</div></div>
+    </div></div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card h-100"><div class="card-body d-flex align-items-center gap-3">
+      <i class="bx bx-map-alt fs-1 text-warning"></i>
+      <div><div class="text-muted small">Km de ruta</div><div class="fs-4 fw-semibold">{{ km }}</div></div>
+    </div></div>
+  </div>
+</div>
+
+<form class="card card-body mb-4" method="get">
+  <div class="row g-3 align-items-end">
+    <div class="col-md-3">
+      <label class="form-label">Sector</label>
+      <select name="sector" class="form-select">
+        <option value="">Todos</option>
+        {% for s in sectores %}
+        <option value="{{ s }}" {{ 'selected' if filtros.get('sector') == s }}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Asesor</label>
+      <select name="asesor" class="form-select">
+        <option value="">Todos</option>
+        {% for a in asesores %}
+        <option value="{{ a.id }}" {{ 'selected' if filtros.get('asesor') == a.id|string }}>{{ a.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Intensidad del mapa</label>
+      <select name="capa" class="form-select">
+        {% for clave, capa in capas.items() %}
+        <option value="{{ clave }}" {{ 'selected' if filtros.get('capa', 'ventas') == clave }}>{{ capa.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3 d-flex gap-2">
+      <button class="btn btn-primary flex-fill"><i class="bx bx-filter-alt"></i> Filtrar</button>
+      <a class="btn btn-outline-secondary" href="{{ url_for('main.index') }}"><i class="bx bx-reset"></i></a>
+    </div>
+  </div>
+</form>
+
+<div class="row g-4 mb-4">
+  <div class="col-lg-8">
+    <div class="card overflow-hidden">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bx bx-map"></i> Mapa de clientes</span>
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('main.mapa') }}?{{ query }}&descargar=1">
+          <i class="bx bx-download"></i> Descargar HTML
+        </a>
+      </div>
+      <iframe src="{{ url_for('main.mapa') }}?{{ query }}" title="Mapa de clientes" style="height: 460px; border: 0; width: 100%"></iframe>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header"><i class="bx bx-trip"></i> Rutas sugeridas</div>
+      <ul class="list-group list-group-flush overflow-auto" style="max-height: 410px">
+        {% for r in rutas %}
+        <li class="list-group-item">
+          <div class="d-flex justify-content-between">
+            <span><i class="bx bxs-circle" style="color: {{ r.color }}"></i> <strong>{{ r.asesor }}</strong></span>
+            <span class="badge text-bg-light">{{ r.km }} km</span>
+          </div>
+          <div class="small text-muted mt-1">{{ r.paradas|join(' → ') }}</div>
+        </li>
+        {% else %}
+        <li class="list-group-item text-muted">Sin clientes para este filtro.</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span><i class="bx bx-store-alt"></i> Clientes</span>
+    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalCliente">
+      <i class="bx bx-plus"></i> Nuevo cliente
+    </button>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead><tr><th>Cliente</th><th>Sector</th><th>Asesor</th><th class="text-end">Ventas</th><th class="text-end">Devuelto</th><th></th></tr></thead>
+      <tbody>
+        {% for c in clientes %}
+        <tr>
+          <td>{{ c.nombre }}</td>
+          <td>{{ c.sector }}</td>
+          <td>{{ c.asesor.nombre if c.asesor else '—' }}</td>
+          <td class="text-end">{{ c.ventas|cop }}</td>
+          <td class="text-end">{{ devuelto.get(c.id, 0)|cop }}</td>
+          <td class="text-end">
+            <button class="btn btn-sm btn-outline-danger" data-borrar="{{ url_for('main.eliminar_cliente', id=c.id) }}"><i class="bx bx-trash"></i></button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span><i class="bx bx-undo"></i> Logística inversa por sector</span>
+    <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalDevolucion">
+      <i class="bx bx-plus"></i> Registrar devolución
+    </button>
+  </div>
+  <div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <thead><tr><th>Sector</th><th class="text-end">Devoluciones</th><th class="text-end">Valor</th><th style="width: 30%">Tasa sobre ventas</th></tr></thead>
+      <tbody>
+        {% for r in resumen %}
+        <tr>
+          <td>{{ r.sector }}</td>
+          <td class="text-end">{{ r.devoluciones }}</td>
+          <td class="text-end">{{ r.valor|cop }}</td>
+          <td>
+            <div class="progress" role="progressbar"><div class="progress-bar bg-danger" style="width: {{ [r.tasa * 5, 100]|min }}%">{{ r.tasa }}%</div></div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="text-muted">Aún no hay devoluciones registradas.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="modal fade" id="modalCliente" tabindex="-1">
+  <div class="modal-dialog">
+    <form class="modal-content" data-api="{{ url_for('main.crear_cliente') }}">
+      <div class="modal-header"><h5 class="modal-title">Nuevo cliente</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body row g-3">
+        <div class="col-12"><label class="form-label">Nombre</label><input name="nombre" class="form-control" required></div>
+        <div class="col-md-6"><label class="form-label">Sector</label><input name="sector" class="form-control" list="listaSectores" required></div>
+        <div class="col-md-6">
+          <label class="form-label">Asesor</label>
+          <select name="asesor_id" class="form-select">
+            <option value="">Sin asignar</option>
+            {% for a in asesores %}<option value="{{ a.id }}">{{ a.nombre }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4"><label class="form-label">Latitud</label><input name="lat" type="number" step="any" class="form-control" value="4.579" required></div>
+        <div class="col-md-4"><label class="form-label">Longitud</label><input name="lng" type="number" step="any" class="form-control" value="-74.216" required></div>
+        <div class="col-md-4"><label class="form-label">Ventas (COP)</label><input name="ventas" type="number" min="0" class="form-control" value="0"></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-primary">Guardar</button></div>
+    </form>
+  </div>
+</div>
+<datalist id="listaSectores">{% for s in sectores %}<option value="{{ s }}">{% endfor %}</datalist>
+
+<div class="modal fade" id="modalDevolucion" tabindex="-1">
+  <div class="modal-dialog">
+    <form class="modal-content" data-api="{{ url_for('main.crear_devolucion') }}">
+      <div class="modal-header"><h5 class="modal-title">Registrar devolución</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body row g-3">
+        <div class="col-12">
+          <label class="form-label">Cliente</label>
+          <select name="cliente_id" class="form-select" required>
+            {% for c in clientes %}<option value="{{ c.id }}">{{ c.nombre }} · {{ c.sector }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6"><label class="form-label">Valor (COP)</label><input name="valor" type="number" min="1" class="form-control" required></div>
+        <div class="col-md-6"><label class="form-label">Motivo</label><input name="motivo" class="form-control"></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-danger">Registrar</button></div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const enviar = async (url, datos) => {
+    const r = await fetch(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(datos)});
+    if (r.ok) return location.reload();
+    const e = await r.json();
+    alert(e.error || "No se pudo guardar");
+  };
+  document.querySelectorAll("form[data-api]").forEach(f =>
+    f.addEventListener("submit", ev => {
+      ev.preventDefault();
+      enviar(f.dataset.api, Object.fromEntries(new FormData(f)));
+    })
+  );
+  document.querySelectorAll("[data-borrar]").forEach(b =>
+    b.addEventListener("click", async () => {
+      if (confirm("¿Eliminar este cliente?")) {
+        await fetch(b.dataset.borrar, {method: "DELETE"});
+        location.reload();
+      }
+    })
+  );
+</script>
+{% endblock %}
